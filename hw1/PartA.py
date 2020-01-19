@@ -1,32 +1,16 @@
 import os
 import re
 import string
+import sys
 # Darren Lim 24233004
 
-def test():
-    while(True):
-        uInput = input("Enter File Path: ")
-        if not os.path.exists(uInput):
-            print("Path of file is Invalid")
-            continue
-        elif os.stat(uInput).st_size == 0:
-            print("File is Empty")
-            continue
-        break
-    tlist = tokenize(uInput)
-    print(tlist)
-    freqDict = computeWordFrequencies(tlist)
-    printFreq(freqDict)
-
 '''
-Param:  valid text file path
-Return: A list of tokenized words in the file
-Description: Tokenize takes a file path, reads the lines, removes non english characters,
-                makes all characters lowercase, and splits the lines into a list. The
-                method also includes punctuation because they are characters, but exclude
-                spaces.
+Tokenize has a time complexity dependent on the size of the text file. O(N)
 '''
 def tokenize(TextFilePath):
+    if os.stat(TextFilePath).st_size == 0:
+        print(TextFilePath + " is Empty")
+        return []
     file = open(TextFilePath, "r")
     tokenList = []
     for line in file:
@@ -34,10 +18,12 @@ def tokenize(TextFilePath):
         line = line.translate(str.maketrans('', '', string.punctuation))
         tokenList.extend(line.split())
     if len(tokenList) == 0:
-        print("No valid tokens in the text file.")
+        print("No valid tokens in the " + TextFilePath + " file.")
     return tokenList
 
-
+'''
+computeWordFrequencies has a time complexity dependent on the size of the input. O(N)
+'''
 def computeWordFrequencies(ListOfToken):
     wordFreqDict = {}
     for token in ListOfToken:
@@ -47,10 +33,27 @@ def computeWordFrequencies(ListOfToken):
             wordFreqDict[token] += 1
     return wordFreqDict
 
+
+'''
+printFreq has a time complexity dependent on the size of the input.
+The function sorts the frequency dictionary, thus the complexity is O(n log n)
+'''
 def printFreq(Frequencies):
     sortedFreq = sorted(Frequencies.items(), key = lambda val: val[1], reverse=True)
     for item in sortedFreq:
         print(str(item[0]) + " -> " + str(item[1]))
 
+'''
+main function
+'''
 if __name__ == '__main__':
-    test()
+    if(len(sys.argv)>2):
+        print("More than one text file inputted, will parse through all.")
+    for i in sys.argv[1:]:
+        if not os.path.exists(i):
+            print("Path of file is Invalid")
+            continue
+        tlist = tokenize(i)
+        freqDict = computeWordFrequencies(tlist)
+        printFreq(freqDict)
+        print()
