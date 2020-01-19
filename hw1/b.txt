@@ -1,0 +1,6 @@
+that appear in both at the SAME positions 
+(this is what SilentGhost meant by "order is significant"). The 
+set intersection solutions will also find matches at DIFFERENT positions. 
+These are answers to 2 quite different questions... (the op's question is 
+ambiguous as to which it is asking) –
+you may want to
