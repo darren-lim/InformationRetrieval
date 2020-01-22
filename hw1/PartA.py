@@ -3,6 +3,7 @@ import re
 import string
 import sys
 # Darren Lim 24233004
+# please run in python 3
 
 '''
 Tokenize has a time complexity dependent on the size of the text file. O(N)
@@ -15,7 +16,7 @@ def tokenize(TextFilePath):
     tokenList = []
     for line in file:
         line = re.sub(r'[^\x00-\x7f]', r' ', line).lower()
-        line = line.translate(str.maketrans('', '', string.punctuation))
+        line = line.translate(str.maketrans(string.punctuation, ' '*len(string.punctuation)))
         tokenList.extend(line.split())
     if len(tokenList) == 0:
         print("No valid tokens in the " + TextFilePath + " file.")

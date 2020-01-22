@@ -2,7 +2,8 @@ import os
 import string
 import re
 import sys
-#Darren Lim 24233004
+# Darren Lim 24233004
+# please run in python 3
 
 '''
 Tokenize has a time complexity dependent on the size of the text file. O(N)
@@ -15,7 +16,7 @@ def tokenize(TextFilePath):
     tokenList = []
     for line in file:
         line = re.sub(r'[^\x00-\x7f]', r' ', line).lower()
-        line = line.translate(str.maketrans('', '', string.punctuation))
+        line = line.translate(str.maketrans(string.punctuation, ' '*len(string.punctuation)))
         tokenList.extend(line.split())
     if len(tokenList) == 0:
         print("No valid tokens in the " + TextFilePath + " file.")
@@ -34,10 +35,6 @@ def compareTokens(listA, listB):
         setIntersect = frozenset(listB).intersection(listA)
     return setIntersect
 
-def printComparisons(setInput):
-    print(len(setInput))
-    for i in setInput:
-        print(i)
 
 if __name__ == '__main__':
     if len(sys.argv) > 3:
@@ -54,5 +51,5 @@ if __name__ == '__main__':
 
     tlist1= tokenize(text1)
     tlist2 = tokenize(text2)
-    tokenSet = compareTokens(tlist1, tlist2)
-    printComparisons(tokenSet)
+    tokenSet = compareTokens(tlist1, tlist2) #set of intersecting words from each list
+    print(len(tokenSet))
