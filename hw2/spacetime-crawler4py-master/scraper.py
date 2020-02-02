@@ -1,5 +1,7 @@
 import re
 from urllib.parse import urlparse
+from urllib.parse import urldefrag
+from lxml import html
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
@@ -7,13 +9,43 @@ def scraper(url, resp):
 
 def extract_next_links(url, resp):
     # Implementation requred.
+    # check if valid page
+    # defrag links
+
+    if resp.status == 200:
+        print("SUCCESS")
+    elif resp.status == 404:
+        print("FAIL")
+        return list()
+
+    print(url)
+    defrag = urldefrag(url)[0]
+    print(defrag)
+
+    extracted_links = list()
+
+    visited = open("visitedURLs.txt", "w")
+    visited.write(defrag)
+    visited.close()
+
+    print(is_valid(defrag))
+
     return list()
 
 def is_valid(url):
     try:
         parsed = urlparse(url)
+        isInDomain = False
+        domains = ["ics.uci.edu", "cs.uci.edu", "informatics.uci.edu", "stat.uci.edu", "today.uci.edu/department/information_computer_sciences"]
         if parsed.scheme not in set(["http", "https"]):
             return False
+        for domain in domains:
+            if domain in parsed.netloc:
+                isInDomain = True
+                print(domain)
+                break
+        if not isInDomain:
+            return isInDomain
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
