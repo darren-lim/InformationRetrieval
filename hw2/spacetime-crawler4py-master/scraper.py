@@ -1,8 +1,12 @@
 import re
 from urllib.parse import urlparse
 from urllib.parse import urldefrag
+from urllib import parse
+from urllib import robotparser
 from lxml import html
 import os
+
+DOMAINS = ['ics.uci.edu', 'cs.uci.edu', 'informatics.uci.edu', 'stat.uci.edu', 'today.uci.edu/department/information_computer_sciences']
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
@@ -24,19 +28,37 @@ def extract_next_links(url, resp):
     elif resp.status == 404:
         print("FAIL")
         return list()
+    else:
+        print(resp.status)
+        return list()
 
     defrag = urldefrag(url)[0]
-
+    parsedUrl = urlparse(url)
     print(url)
     print(defrag)
+
+    didvisit = UniqueURLs(defrag)
+    if didvisit:
+        return list()
+
+    rp = robotparser.RobotFileParser()
+    print(parsedUrl.scheme, parsedUrl.netloc)
+    fullDomain = parse.urljoin('https:/', parsedUrl.netloc)
+    print(fullDomain)
+
+    #robDom = parse.urljoin(fullDomain, '/robots.txt')
+    robDom = fullDomain + '/robots.txt'
+    rp.set_url(robDom)
+    rp.read()
+    if not rp.can_fetch("*", url):
+        print("Cannot fetch " + url)
+        return list()
+
+
     visited = open('visitedURLs.txt', 'a+')
     visited.write(defrag + "\n")
     visited.close()
 
-    #if Visited(url):
-    #   return list()
-
-    UniqueURLs(defrag)
 
     # extract links on the url page
     extracted_links = set()
@@ -48,7 +70,7 @@ def extract_next_links(url, resp):
                 print("cont")
                 continue
             elif link[0] == '/' and link[1] != '/':
-                link = urlparse(url).netloc + link
+                link = parsedUrl.netloc + link
             print(link)
             #defragged = urldefrag(link)[0]
             extracted_links.add(link)
@@ -63,12 +85,12 @@ def is_valid(url):
     try:
         parsed = urlparse(url)
         isInDomain = False
-        domains = ['ics.uci.edu', 'cs.uci.edu', 'informatics.uci.edu', 'stat.uci.edu', 'today.uci.edu/department/information_computer_sciences']
+        #domains = ['ics.uci.edu', 'cs.uci.edu', 'informatics.uci.edu', 'stat.uci.edu', 'today.uci.edu/department/information_computer_sciences']
 
         if parsed.scheme not in set(["http", "https"]):
             return False
 
-        for domain in domains:
+        for domain in DOMAINS:
             if domain in parsed.netloc or ('today.uci.edu' in parsed.netloc and '/department/information_computer_sciences' in parsed.path):
                 isInDomain = True
                 break
@@ -95,14 +117,19 @@ def Visited(urlList):
     #finalList = []
     # visited = open("visitedURLs.txt", "a+")
     #lines = visited.readlines()
-    with open('visitedURLs.txt', 'a+') as visited:
-        for line in visited:
+    if not os.path.isfile('frontierURLs.txt'):
+        with open('frontierURLs.txt', 'a+') as start:
+            for index in len(DOMAINS)-1:
+                start.write('https://www.' + DOMAINS[index])
+            start.write(DOMAINS[-1])
+    with open('frontierURLs.txt', 'a+') as tovisit:
+        for line in tovisit:
             urlSet.append(line)
         urlSet = set(urlSet)
         urlList = set(urlList)
         finalSet = urlList.difference(urlSet)
         for url in finalSet:
-            visited.write(url + "\n")
+            tovisit.write(url + "\n")
 
     '''
     for url in urlList:
@@ -117,7 +144,7 @@ def Visited(urlList):
 
 def UniqueURLs(defrag):
     # check if url is unique
-    urlExists = False
+    urlExists = True
     urlSet = set()
     with open('uniqueURLs.txt', 'a+') as unique:
         for line in unique:
@@ -125,14 +152,10 @@ def UniqueURLs(defrag):
         if defrag not in urlSet:
             print("writing url")
             unique.write(defrag + "\n")
-        '''
-            if line == defrag:
-                urlExists = True
-                break
-        if not urlExists:
-            print("writing url")
-            unique.write(defrag + "\n")
-        '''
+            urlExists = False
+    return urlExists
+
+
 
     '''
     unique = open("uniqueURLs.txt", "a+")
