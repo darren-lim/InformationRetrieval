@@ -1,34 +1,33 @@
 import re
 from urllib import parse
-#from urllib.parse import urlparse
-#from urllib.parse import urldefrag
-#from urllib.parse import urlsplit
-#from urllib.parse import urljoin
-#from urllib import parse
-from urllib import robotparser
 
 from bs4 import BeautifulSoup, SoupStrainer
 from lxml import html
 from lxml import etree, objectify
 import requests
+from reppy.robots import Robots
 import os
 import sys
+import time
 
 DOMAINS = ['https://www.ics.uci.edu', 'https://www.cs.uci.edu', 'https://www.informatics.uci.edu', 'https://www.stat.uci.edu', 'https://today.uci.edu/department/information_computer_sciences/']
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
-    validLinks = set([link for link in links if is_valid(link)])
-    print(validLinks)
-    #finalLinks = Visited(validLinks)
-    #print(finalLinks)
+    validLinks = sorted([link for link in links if is_valid(link)])
+    #print(validLinks)
+    #print()
+    #final = parse_robots_txt(validLinks)
+    '''
     while True:
         next = input("Press a next, e quit ")
         if next == 'a':
             break
         elif next == 'e':
             sys.exit()
-    return list(validLinks)
+    print("next")
+    '''
+    return validLinks
 
 def extract_next_links(url, resp):
     # Implementation requred.
@@ -64,8 +63,6 @@ def extract_next_links(url, resp):
     parsedUrl = parse.urlsplit(url, allow_fragments=False)
     base_url = "{0.scheme}://{0.netloc}/".format(parsedUrl)
     print(url)
-    print(parsedUrl.netloc)
-    print(base_url)
 
     did_visit = UniqueURLs(defrag)
     # might not need this
@@ -75,94 +72,27 @@ def extract_next_links(url, resp):
 
     extracted_links = set()
 
-    '''
-    rp = robotparser.RobotFileParser()
-    print(parsedUrl.scheme, parsedUrl.netloc)
-    fullDomain = parsedUrl.scheme + '//' + parsedUrl.netloc
-    print(fullDomain)
-
-    #robDom = parse.urljoin(fullDomain, '/robots.txt')
-    robDom = fullDomain + '/robots.txt'
-    rp.set_url(robDom)
-    rp.read()
-    if rp.can_fetch("*", url):
-        for line in rp.parse()
-    else:
-        print("Cannot fetch " + url)
-    '''
-
     write_to_file('visitedURLs.txt', defrag.split())
     #visited = open('visitedURLs.txt', 'a+')
     #visited.write(defrag + "\n")
     #visited.close()
 
-    '''
-    #testing
-    rp = robotparser.RobotFileParser()
-    content = resp.raw_response.content
-    dom = html.fromstring(content, parser=etree.HTMLParser(remove_comments=True))
-
-    absDom = html.make_links_absolute(defrag, True)
-    adom = html.fromstring(absDom, parser=html.HTMLParser(remove_comments=True))
-    for element, attribute, link, pos in html.iterlinks(adom):
-        print(link)
-        if attribute == 'href':
-            print("sss")
-            print(link)
-            print("ddd")
-    '''
-    #robots = ''
-    #rp = robotparser.RobotFileParser()
     content = resp.raw_response.content
     soup = BeautifulSoup(content, 'lxml')
-    for link in soup.find_all('a'):
+    for link in soup.find_all('a', href=True):
         link_url = link['href']
         if len(link_url) > 200:
             continue
         url = parse.urljoin(base_url, link_url)
         extracted_links.add(url)
-    '''
-        if robots == '' or base_url not in robots:
-            robots = base_url+'robots.txt'
-            print(robots)
-            rp.set_url(robots)
-            rp.read()
-        # bare minimum if we even CAN fetch urls.
-        if rp.can_fetch("*", link_url):
-            print("link added ", link_url)
-            extracted_links.add(url)
-        #extracted_links.add(url)
-    '''
-    '''
-    robots = ''
-    rp = robotparser.RobotFileParser()
-    for link in extracted_links:
-        newLink = parse.urlsplit(link)
-        fullDomain = "{0.scheme}://{0.netloc}/".format(newLink)
 
-        # robDom = parse.urljoin(fullDomain, '/robots.txt')
-        # IF a link to another domain exists, check its robots.txt to see if it is a valid link to crawl
-        # fetch doesnt seem to work
-        if robots == '' or fullDomain not in robots:
-            robots = fullDomain+'robots.txt'
-            print(robots)
-            rp.set_url(robots)
-            rp.read()
-        if rp.can_fetch("*", link):
-            extracted_links.add(link)
-        else:
-            print("Cannot fetch acc robots.txt")
-    #except:
-    #    print("Page content unavailable")
-    #    print(url)
-    '''
     #add html parsing
 
     #print(is_valid(defrag))
     #return list()
-    extracted_links = sorted(list(extracted_links))
-    l = parse_robots_txt(base_url, extracted_links)
-    return l
+    #extracted_links = sorted(list(extracted_links))
+    #l = parse_robots_txt(base_url, extracted_links)
+    return list(extracted_links)
 
 def is_valid(url):
     try:
@@ -205,37 +135,6 @@ def is_valid(url):
         print("TypeError for ", parsed)
         raise
 
-'''
-def Visited(urlList):
-    urlSet = []
-    #finalList = []
-    # visited = open("visitedURLs.txt", "a+")
-    #lines = visited.readlines()
-    if not os.path.isfile('frontierURLs.txt'):
-        with open('frontierURLs.txt', 'a+') as start:
-            for index in range(len(DOMAINS)-1):
-                start.write(DOMAINS[index])
-            start.write(DOMAINS[-1])
-    with open('frontierURLs.txt', 'a+') as tovisit:
-        for line in tovisit:
-            urlSet.append(line)
-        urlSet = set(urlSet)
-        urlList = set(urlList)
-        finalSet = urlList.difference(urlSet)
-        for url in finalSet:
-            tovisit.write(url + "\n")
-
-    
-    #for url in urlList:
-    #    if url in urlSet:
-    #        continue
-    #    else:
-    #        finalList.append(url)
-    
-    #visited.close()
-    return finalSet
-'''
-
 def UniqueURLs(defrag):
     # check if url is unique
     url_exists = True
@@ -277,20 +176,31 @@ def file_to_set(file_name):
     return file_set
 
 
-def parse_robots_txt(base_url, link_list):
-    robots = ''
-    rp = robotparser.RobotFileParser()
+def parse_robots_txt(link_list):
+    robotsURL = ''
+    robots = None
     links = []
-    for link_url in link_list:
-        if robots == '' or base_url not in robots:
-            robots = base_url + 'robots.txt'
-            print(robots)
-            rp.set_url(robots)
-            rp.read()
-        if rp.can_fetch("*", link_url):
-            print("link added ", link_url)
-            links.append(link_url)
-    return links
+    try:
+        for link_url in link_list:
+            parsed_link = parse.urlparse(link_url)
+            link_base = '{0.scheme}://{0.netloc}/'.format(parsed_link)
+            if robots == None or link_base not in robotsURL:
+                robots_txt_name = parsed_link.netloc.split('.')
+                robots_txt_name = ''.join(robots_txt_name)
+                robotsURL = link_base + 'robots.txt'
+                time.sleep(0.5)
+                robots = Robots.fetch(robotsURL, timeout=20)
+            if parsed_link.query == '':
+                query_only = '{0.path}/{0.params}/'.format(parsed_link)
+            else:
+                query_only = '{0.path}/{0.params}/?/{0.query}'.format(parsed_link)
+            if robots.allowed(query_only, '*'):
+                links.append(link_url)
+        return links
+    except Exception as e:
+        print("unable to robot: ", e)
+        return link_list
+
 
     '''
     unique = open("uniqueURLs.txt", "a+")

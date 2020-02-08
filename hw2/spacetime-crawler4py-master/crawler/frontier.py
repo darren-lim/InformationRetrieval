@@ -73,7 +73,6 @@ class Frontier(object):
 
     def check_url_completed(self, url):
         url = normalize(url)
-        print(self.to_be_downloaded)
         urlhash = get_urlhash(url)
         if urlhash not in self.save:
             return False
