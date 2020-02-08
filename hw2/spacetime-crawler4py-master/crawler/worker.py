@@ -19,7 +19,16 @@ class Worker(Thread):
             if not tbd_url:
                 self.logger.info("Frontier is empty. Stopping Crawler.")
                 break
+            if self.frontier.check_url_completed(tbd_url):
+                print("URL Already marked complete")
+                print(tbd_url)
+                print("Loading next url")
+                continue
             resp = download(tbd_url, self.config, self.logger)
+            if resp == None:
+                self.logger.info(
+                    f"{tbd_url} Timeout")
+                continue
             self.logger.info(
                 f"Downloaded {tbd_url}, status <{resp.status}>, "
                 f"using cache {self.config.cache_server}.")
