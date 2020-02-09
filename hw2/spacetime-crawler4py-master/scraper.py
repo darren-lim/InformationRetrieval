@@ -1,7 +1,7 @@
 import re
 from urllib import parse
 import string
-from bs4 import BeautifulSoup, SoupStrainer
+from bs4 import BeautifulSoup, Comment
 from lxml import html
 from lxml import etree, objectify
 import requests
@@ -70,22 +70,40 @@ def extract_next_links(url, resp):
         print("did visit")
         return list()
 
-    extracted_links = set()
-
     write_to_file('visitedURLs.txt', defrag.split())
+    if 'ics.uci.edu' in base_url:
+        write_to_file('icsurls.txt', defrag.split())
+
+
     #visited = open('visitedURLs.txt', 'a+')
     #visited.write(defrag + "\n")
     #visited.close()
 
     content = resp.raw_response.content
     soup = BeautifulSoup(content, 'lxml')
-    extracted_links = find_all_links(base_url, soup)
+
+    # remove comments
+    for comments in soup.findAll(text=lambda text: isinstance(text, Comment)):
+        comments.extract()
+
+    #extracted_links = find_all_links(base_url, soup)
 
     extracted_text = find_all_text(soup)
+    print(extracted_text)
     token_list = tokenize(extracted_text)
     freq_dict = computeWordFrequencies(token_list)
     no_stop = remove_stop_words(freq_dict)
     printFreq(no_stop)
+
+    with open('longestpage.txt', 'w+') as f:
+        list_len = len(no_stop)
+        line = f.read().split(' ')
+        if line[0] == '':
+            f.write(defrag + ' ' + str(list_len))
+        elif int(line[1]) <= list_len:
+            f.write(defrag + ' ' + str(list_len))
+
+    extracted_links = find_all_links(base_url, soup)
 
     #add html parsing
 
@@ -139,25 +157,10 @@ def is_valid(url):
 def UniqueURLs(defrag):
     # check if url is unique
     url_exists = True
-    #urlSet = set()
-    '''
-    if not os.path.isfile('uniqueURLs.txt'):
-        with open('uniqueURLs.txt', 'a+') as unique:
-            for dom in DOMAINS:
-                unique.write(dom + "\n")
-    '''
     unique_set = file_to_set('uniqueURLs.txt')
     if defrag not in unique_set:
         write_to_file('uniqueURLs.txt', defrag.split())
         url_exists = False
-
-    #with open('/uniqueURLs.txt', 'a+') as unique:
-    #    for line in unique:
-    #        urlSet.add(line)
-    #    if defrag not in urlSet:
-    #        print("writing url")
-    #        unique.write(defrag + "\n")
-    #        urlExists = False
 
     return url_exists
 
@@ -187,11 +190,27 @@ def find_all_links(base_url, soup):
         links.add(url)
     return links
 
+'''
+def find_all_text(soup):
+    for script in soup(['script', 'style']):
+        script.decompose()
+    tag_list = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a']
+    text_list = [text for text in soup.find_all(text=True) if text.parent.name in tag_list]
+    print(soup.get_text)
+    return text_list
+'''
+
 
 def find_all_text(soup):
-    tag_list = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
-    text_list = [text for text in soup.find_all(text=True) if text.parent.name in tag_list]
-    return text_list
+    texts = soup.findAll(text=True)
+    visible_texts = filter(filter_tags, texts)
+    return [t.strip() for t in visible_texts if t.strip() != '']
+
+
+def filter_tags(element):
+    if element.parent.name in ['style', 'script', '[document]', 'head', 'title', 'meta', 'noscript', 'header', 'html']:
+        return False
+    return True
 
 def parse_robots_txt(link_list):
     robotsURL = ''
