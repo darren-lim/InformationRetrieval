@@ -69,10 +69,34 @@ class Worker(Thread):
                 parsed_link = parse.urlparse(link_url)
                 link_base = '{0.scheme}://{0.netloc}/'.format(parsed_link)
                 if robots == None or link_base not in robotsURL:
-                    robotsURL = link_base + 'robots.txt'
-                    time.sleep(0.5)
-                    # get the robots.txt file
-                    robots = Robots.fetch(f"http://{host}:{port}/", params=[("q", f"{robotsURL}"), ("u", f"{self.config.user_agent}")], timeout=20)
+                    if 'today.uci.edu' in link_base:
+                        robots = Robots.parse('https://today.uci.edu/department/information_computer_sciences/robots.txt', '''
+                        User-agent: *
+                        Disallow: /*/calendar/*?*types*
+                        Disallow: /*/browse*?*types*
+                        Disallow: /*/calendar/200*
+                        Disallow: /*/calendar/2015*
+                        Disallow: /*/calendar/2016*
+                        Disallow: /*/calendar/2017*
+                        Disallow: /*/calendar/2018*
+                        Disallow: /*/calendar/2019*
+                        Disallow: /*/calendar/202*
+                        Disallow: /*/calendar/week
+                        
+                        Disallow: /*/search
+                        Disallow: /*?utm
+                        
+                        Allow: /
+                        Allow: /*/search/events.ics
+                        Allow: /*/search/events.xml
+                        Allow: /*/calendar/ics
+                        Allow: /*/calendar/xml
+                        ''')
+                    else:
+                        robotsURL = link_base + 'robots.txt'
+                        time.sleep(0.5)
+                        # get the robots.txt file
+                        robots = Robots.fetch(f"http://{host}:{port}/", params=[("q", f"{robotsURL}"), ("u", f"{self.config.user_agent}")], timeout=20)
 
                     # WARNING: UNCOMMENTING BYPASSES CACHE
 

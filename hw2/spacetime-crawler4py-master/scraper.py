@@ -1,6 +1,6 @@
 import re
 from urllib import parse
-
+import string
 from bs4 import BeautifulSoup, SoupStrainer
 from lxml import html
 from lxml import etree, objectify
@@ -79,12 +79,14 @@ def extract_next_links(url, resp):
 
     content = resp.raw_response.content
     soup = BeautifulSoup(content, 'lxml')
-    for link in soup.find_all('a', href=True):
-        link_url = link['href']
-        if len(link_url) > 200:
-            continue
-        url = parse.urljoin(base_url, link_url)
-        extracted_links.add(url)
+    extracted_links = find_all_links(base_url, soup)
+
+    extracted_text = find_all_text(soup)
+    token_list = tokenize(extracted_text)
+    freq_dict = computeWordFrequencies(token_list)
+    print(token_list)
+    print()
+    printFreq(freq_dict)
 
     #add html parsing
 
@@ -176,6 +178,22 @@ def file_to_set(file_name):
     return file_set
 
 
+def find_all_links(base_url, soup):
+    links = set()
+    for link in soup.find_all('a', href=True):
+        link_url = link['href']
+        if len(link_url) > 200:
+            continue
+        url = parse.urljoin(base_url, link_url)
+        links.add(url)
+    return links
+
+
+def find_all_text(soup):
+    tag_list = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+    text_list = [text for text in soup.find_all(text=True) if text.parent.name in tag_list]
+    return text_list
+
 def parse_robots_txt(link_list):
     robotsURL = ''
     robots = None
@@ -202,18 +220,42 @@ def parse_robots_txt(link_list):
         return link_list
 
 
-    '''
-    unique = open("uniqueURLs.txt", "a+")
-    lines = unique.readlines()
-    urlExists = False
-    for line in lines:
-        if line == defrag:
-            urlExists = True
-            break
-    if not urlExists:
-        print("writing url")
-        unique.write(defrag + "\n")
-        print(defrag)
-    unique.close()
-    '''
+'''
+Tokenize has a time complexity dependent on the size of the text file. O(N)
+'''
+def tokenize(text_list):
+    #if os.stat(TextFilePath).st_size == 0:
+    #    print(TextFilePath + " is Empty")
+    #    return []
+    #file = open(TextFilePath, "r")
+    tokenList = []
+    for line in text_list:
+        line = re.sub(r'[^\x00-\x7f]', r' ', line).lower()
+        line = line.translate(str.maketrans(string.punctuation, ' '*len(string.punctuation)))
+        tokenList.extend(line.split())
+    if len(tokenList) == 0:
+        print("No valid tokens in the list")
+    return tokenList
+
+'''
+computeWordFrequencies has a time complexity dependent on the size of the input. O(N)
+'''
+def computeWordFrequencies(ListOfToken):
+    wordFreqDict = {}
+    for token in ListOfToken:
+        if token not in wordFreqDict:
+            wordFreqDict[token] = 1
+        else:
+            wordFreqDict[token] += 1
+    return wordFreqDict
+
+
+'''
+printFreq has a time complexity dependent on the size of the input.
+The function sorts the frequency dictionary, thus the complexity is O(n log n)
+'''
+def printFreq(Frequencies):
+    sortedFreq = sorted(Frequencies.items(), key = lambda val: val[1], reverse=True)
+    for item in sortedFreq:
+        print(str(item[0]) + " -> " + str(item[1]))
 
