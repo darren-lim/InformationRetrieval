@@ -84,9 +84,8 @@ def extract_next_links(url, resp):
     extracted_text = find_all_text(soup)
     token_list = tokenize(extracted_text)
     freq_dict = computeWordFrequencies(token_list)
-    print(token_list)
-    print()
-    printFreq(freq_dict)
+    no_stop = remove_stop_words(freq_dict)
+    printFreq(no_stop)
 
     #add html parsing
 
@@ -236,6 +235,16 @@ def tokenize(text_list):
     if len(tokenList) == 0:
         print("No valid tokens in the list")
     return tokenList
+
+
+def remove_stop_words(text_dict):
+    final = text_dict
+    with open('stopwords.txt') as file:
+        for line in file:
+            line = line.strip()
+            if line in final:
+                del final[line]
+    return final
 
 '''
 computeWordFrequencies has a time complexity dependent on the size of the input. O(N)
