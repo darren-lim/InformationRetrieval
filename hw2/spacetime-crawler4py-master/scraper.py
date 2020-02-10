@@ -80,18 +80,34 @@ def extract_next_links(url, resp):
     #visited.close()
 
     content = resp.raw_response.content
-    soup = BeautifulSoup(content, 'lxml')
-
+    print(len(content))
+    soup = BeautifulSoup(content, 'html.parser')
+    #print(soup)
+    for script in soup.find_all('script'):
+        script.extract()
+    #print(soup)
     # remove comments
     for comments in soup.findAll(text=lambda text: isinstance(text, Comment)):
         comments.extract()
-
+    print(soup)
     #extracted_links = find_all_links(base_url, soup)
 
-    extracted_text = find_all_text(soup)
-    print(extracted_text)
-    token_list = tokenize(extracted_text)
-    freq_dict = computeWordFrequencies(token_list)
+    p_text = find_paragraph_words(soup)
+    p_tokens = tokenize(p_text)
+    print(p_tokens)
+    print()
+    print(len(p_tokens))
+    if len(p_tokens) < 70:
+        return list()
+    # check if the page has low information
+    # if low information, get each subsequent link within that path
+    # ignore those paths ?? ???????
+
+    #extracted_text = find_all_text(soup)
+    #print(extracted_text)
+    #token_list = tokenize(extracted_text)
+    
+    freq_dict = computeWordFrequencies(p_tokens)
     no_stop = remove_stop_words(freq_dict)
     printFreq(no_stop)
 
@@ -137,7 +153,10 @@ def is_valid(url):
             print("URL ALREADY SEEDED")
             return False
         '''
-        if 'pdf' in parsed.path.split('/'):
+        parsed_path = set(parsed.path.split('/'))
+        if 'pdf' in parsed_path:
+            return False
+        if 'xml' in parsed_path:
             return False
 
         return not re.match(
@@ -207,8 +226,13 @@ def find_all_text(soup):
     return [t.strip() for t in visible_texts if t.strip() != '']
 
 
+def find_paragraph_words(soup):
+    tag_list = {'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
+    return [t.strip() for t in soup.find_all(text=True) if t.parent.name in tag_list]
+
+
 def filter_tags(element):
-    if element.parent.name in ['style', 'script', '[document]', 'head', 'title', 'meta', 'noscript', 'header', 'html']:
+    if element.parent.name in {'style', 'script', '[document]', 'head', 'title', 'meta', 'noscript', 'header', 'html'}:
         return False
     return True
 
