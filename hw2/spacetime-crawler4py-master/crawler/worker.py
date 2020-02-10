@@ -2,7 +2,7 @@ from threading import Thread
 
 from utils.download import download
 from utils import get_logger
-from scraper import scraper
+from scraper import WebScraper
 import time
 
 import sys
@@ -18,12 +18,35 @@ class Worker(Thread):
         super().__init__(daemon=True)
         
     def run(self):
-        run_time = 300
-        run_start = 300
+        run_time = 500
+        run_start = 500
+        run_forever = False
+        spider = WebScraper()
         while True:
             tbd_url = self.frontier.get_tbd_url()
             if not tbd_url:
                 self.logger.info("Frontier is empty. Stopping Crawler.")
+                #'''''
+                with open('ReportText.txt', 'w+') as f:
+                    common_dict = spider.most_common_words()
+                    f.write('Unique Pages Count: ' + str(spider.get_unique_pages_count()) + '\n')
+                    f.write('\n')
+                    f.write('Longest Page: \n')
+                    for key, value in spider.get_longest_page().items():
+                        f.write(str(key) + ' -> ' + str(value) + ' words \n')
+                    f.write('\n')
+                    count = 0
+                    f.write('50 Most Common Words: \n')
+                    for key, value in common_dict.items():
+                        if count == 50:
+                            break
+                        else:
+                            f.write(str(key) + ' -> ' + str(value) + '\n')
+                    f.write('\n')
+                    f.write('Subdomains in ics.uci.edu: \n')
+                    for key, value in spider.get_subdomains().items():
+                        f.write(str(key) + ' -> ' + str(value) + '\n')
+                #'''
                 break
             if self.frontier.check_url_completed(tbd_url):
                 print("URL Already marked complete")
@@ -38,17 +61,16 @@ class Worker(Thread):
             self.logger.info(
                 f"Downloaded {tbd_url}, status <{resp.status}>, "
                 f"using cache {self.config.cache_server}.")
-            scraped_urls = scraper(tbd_url, resp)
+            scraped_urls = spider.scraper(tbd_url, resp)
             check_robots = self.parse_robots_txt(scraped_urls)
             for scraped_url in check_robots:
                 self.frontier.add_url(scraped_url)
             self.frontier.mark_url_complete(tbd_url)
-            print(len(check_robots) == len(scraped_urls))
             time.sleep(self.config.time_delay)
             if run_start == run_time:
                 while True:
                     if run_start == run_time:
-                        next = input("Press a next, e quit, q run 300 times ")
+                        next = input("Press a next, e quit, q run 500 times, w run until end ")
                         if next == 'a':
                             break
                         elif next == 'e':
@@ -56,70 +78,77 @@ class Worker(Thread):
                         elif next == 'q':
                             run_start = 0
                             break
+                        elif next == 'w':
+                            run_start = 501
+                            run_forever = True
+                            break
             else:
-                run_start += 1
+                if not run_forever:
+                    run_start += 1
 
     def parse_robots_txt(self, link_list):
         host, port = self.config.cache_server
         robotsURL = ''
         robots = None
         links = []
-        try:
-            for link_url in link_list:
-                parsed_link = parse.urlparse(link_url)
-                link_base = '{0.scheme}://{0.netloc}/'.format(parsed_link)
-                if robots == None or link_base not in robotsURL:
-                    if 'today.uci.edu' in link_base:
-                        robots = Robots.parse('https://today.uci.edu/department/information_computer_sciences/robots.txt', '''
-                        User-agent: *
-                        Disallow: /*/calendar/*?*types*
-                        Disallow: /*/browse*?*types*
-                        Disallow: /*/calendar/200*
-                        Disallow: /*/calendar/2015*
-                        Disallow: /*/calendar/2016*
-                        Disallow: /*/calendar/2017*
-                        Disallow: /*/calendar/2018*
-                        Disallow: /*/calendar/2019*
-                        Disallow: /*/calendar/202*
-                        Disallow: /*/calendar/week
-                        
-                        Disallow: /*/search
-                        Disallow: /*?utm
-                        
-                        Allow: /
-                        Allow: /*/search/events.ics
-                        Allow: /*/search/events.xml
-                        Allow: /*/calendar/ics
-                        Allow: /*/calendar/xml
-                        ''')
-                    else:
-                        robotsURL = link_base + 'robots.txt'
-                        time.sleep(0.5)
-                        # get the robots.txt file
+        for link_url in link_list:
+            parsed_link = parse.urlparse(link_url)
+            link_base = '{0.scheme}://{0.netloc}/'.format(parsed_link)
+            if robots == None or link_base not in robotsURL:
+                if 'today.uci.edu' in link_base:
+                    robots = Robots.parse('https://today.uci.edu/department/information_computer_sciences/robots.txt', '''
+                    User-agent: *
+                    Disallow: /*/calendar/*?*types*
+                    Disallow: /*/browse*?*types*
+                    Disallow: /*/calendar/200*
+                    Disallow: /*/calendar/2015*
+                    Disallow: /*/calendar/2016*
+                    Disallow: /*/calendar/2017*
+                    Disallow: /*/calendar/2018*
+                    Disallow: /*/calendar/2019*
+                    Disallow: /*/calendar/202*
+                    Disallow: /*/calendar/week
+                    
+                    Disallow: /*/search
+                    Disallow: /*?utm
+                    
+                    Allow: /
+                    Allow: /*/search/events.ics
+                    Allow: /*/search/events.xml
+                    Allow: /*/calendar/ics
+                    Allow: /*/calendar/xml
+                    ''')
+                else:
+                    robotsURL = link_base + 'robots.txt'
+                    time.sleep(0.5)
+                    # get the robots.txt file
+                    try:
                         robots = Robots.fetch(f"http://{host}:{port}/", params=[("q", f"{robotsURL}"), ("u", f"{self.config.user_agent}")], timeout=20)
+                    except Exception as e:
+                        print(e)
+                        robots = None
 
                     # WARNING: UNCOMMENTING BYPASSES CACHE
 
                     # if the robots is empty, get the robots.txt from actual server
-                    #robots_str = str(robots)
-                    #robots_str = robots_str.split(': ')[1].split('}')[0]
-                    #if robots_str == '[]':
-                    #    robots = Robots.fetch(robotsURL, timeout=20)
-                    #    print(robots)
-
-                if parsed_link.params == '':
-                    if parsed_link.query == '':
-                        query_only = '{0.path}/'.format(parsed_link)
-                    else:
-                        query_only = '{0.path}/?{0.query}'.format(parsed_link)
+                    # robots_str = str(robots)
+                    # robots_str = robots_str.split(': ')[1].split('}')[0]
+                    # if robots_str == '[]':
+                    #     robots = Robots.fetch(robotsURL, timeout=20)
+                    #     print(robots)
+            if robots == None:
+                links.append(link_url)
+                continue
+            if parsed_link.params == '':
+                if parsed_link.query == '':
+                    query_only = '{0.path}/'.format(parsed_link)
                 else:
-                    if parsed_link.query == '':
-                        query_only = '{0.path}/{0.params}/'.format(parsed_link)
-                    else:
-                        query_only = '{0.path}/{0.params}/?{0.query}'.format(parsed_link)
-                if robots.allowed(query_only, self.config.user_agent):
-                    links.append(link_url)
-            return links
-        except Exception as e:
-            print("unable to robot: ", e)
-            return link_list
+                    query_only = '{0.path}/?{0.query}'.format(parsed_link)
+            else:
+                if parsed_link.query == '':
+                    query_only = '{0.path}/{0.params}/'.format(parsed_link)
+                else:
+                    query_only = '{0.path}/{0.params}/?{0.query}'.format(parsed_link)
+            if robots.allowed(query_only, self.config.user_agent):
+                links.append(link_url)
+        return links
