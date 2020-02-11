@@ -85,7 +85,8 @@ class WebScraper:
             return list()
 
         self.write_to_file('visitedURLs.txt', defrag.split())
-
+        if 'https://today.uci.edu/department/information_computer_sciences/calendar' in defrag:
+            return list()
         content = resp.raw_response.content
         soup = BeautifulSoup(content, 'lxml')
         #print(soup)
@@ -95,15 +96,31 @@ class WebScraper:
         # remove comments
         for comments in soup.findAll(text=lambda text: isinstance(text, Comment)):
             comments.extract()
+
+        for hidden in soup.find_all("div",attrs={"style": "display: none;"}):
+            hidden.extract()
         #extracted_links = find_all_links(base_url, soup)
 
-        p_text = self.find_paragraph_words(soup)
+        p_text = self.find_all_text(soup)
+        #p_text = soup.find_all(text = True)
+        #print(p_text)
+        #for p in p_text:
+        #    print(p.parent)
         p_tokens = self.tokenize(p_text)
+        #print(len(p_tokens))
+        print(p_tokens)
 
         # If low textual content / information, dont get links (considered avoiding low content families)
         if len(p_tokens) < 60:
             #extracted_links = self.find_all_links(base_url, soup)
             #return extracted_links
+            if parsedUrl.path == '':
+                if '.ics.uci.edu' in base_url:
+                    self.add_subdomains(parsedUrl.netloc)
+
+                extracted_links = self.find_all_links(base_url, soup)
+
+                return extracted_links
             print("No textual content")
             return list()
         '''
@@ -130,7 +147,7 @@ class WebScraper:
         #self.printFreq(no_stop)
 
         # add values to words common words dict
-        for key, value in no_stop:
+        for key, value in no_stop.items():
             if key in self.common_words.keys():
                 self.common_words[key] += value
             else:
@@ -138,7 +155,7 @@ class WebScraper:
 
         # Check longest page length
         list_len = len(no_stop)
-        for key, value in self.longest_page:
+        for key, value in self.longest_page.items():
             if list_len >= value:
                 self.longest_page.clear()
                 self.longest_page[defrag] = value
@@ -235,22 +252,29 @@ class WebScraper:
         return text_list
     '''
 
-
+    # https://stackoverflow.com/questions/1936466/beautifulsoup-grab-visible-webpage-text?noredirect=1&lq=1
     def find_all_text(self, soup):
         texts = soup.findAll(text=True)
         visible_texts = filter(self.filter_tags, texts)
         return [t.strip() for t in visible_texts if t.strip() != '']
+
+    def filter_tags(self, element):
+        if element.parent.name in {'style', 'script', '[document]', 'head', 'title', 'meta', 'noscript', 'header', 'html'}:
+            return False
+        if element.name == 'a':
+            return False
+        return True
+
+
+    def find_text(self, soup):
+        [s.extract() for s in soup(['style', 'script', '[document]', 'head', 'title'])]
+        return soup.get_text()
 
 
     def find_paragraph_words(self, soup):
         tag_list = {'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'td'}
         return [t.strip() for t in soup.find_all(text=True) if t.parent.name in tag_list]
 
-
-    def filter_tags(self, element):
-        if element.parent.name in {'style', 'script', '[document]', 'head', 'title', 'meta', 'noscript', 'header', 'html'}:
-            return False
-        return True
 
     '''
     Tokenize has a time complexity dependent on the size of the text file. O(N)
@@ -304,8 +328,6 @@ class WebScraper:
             self.subdomains[sdomain] += 1
 
     def most_common_words(self):
-        print(self.common_words.items())
-        print()
         return sorted(self.common_words.items(), key=lambda val: val[1], reverse=True)
 
     def get_unique_pages_count(self):
@@ -341,9 +363,9 @@ def is_valid(url):
             return False
         '''
         parsed_path = set(parsed.path.split('/'))
-        if 'pdf' in parsed_path:
+        if '/pdf' in parsed_path:
             return False
-        if 'xml' in parsed_path:
+        if '/xml' in parsed_path:
             return False
 
         return not re.match(

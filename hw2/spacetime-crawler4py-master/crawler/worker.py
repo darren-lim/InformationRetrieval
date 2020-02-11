@@ -37,11 +37,11 @@ class Worker(Thread):
                     f.write('\n')
                     count = 0
                     f.write('50 Most Common Words: \n')
-                    for key, value in common_dict.items():
+                    for item in common_dict:
                         if count == 50:
                             break
                         else:
-                            f.write(str(key) + ' -> ' + str(value) + '\n')
+                            f.write(str(item[0]) + ' -> ' + str(item[1]) + '\n')
                     f.write('\n')
                     f.write('Subdomains in ics.uci.edu: \n')
                     for key, value in spider.get_subdomains().items():
