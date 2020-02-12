@@ -100,7 +100,6 @@ class WebScraper:
         for hidden in soup.find_all("div",attrs={"style": "display: none;"}):
             hidden.extract()
         #extracted_links = find_all_links(base_url, soup)
-
         p_text = self.find_all_text(soup)
         #p_text = soup.find_all(text = True)
         #print(p_text)
@@ -114,6 +113,7 @@ class WebScraper:
         if len(p_tokens) < 60:
             #extracted_links = self.find_all_links(base_url, soup)
             #return extracted_links
+            '''
             if parsedUrl.path == '':
                 if '.ics.uci.edu' in base_url:
                     self.add_subdomains(parsedUrl.netloc)
@@ -121,6 +121,7 @@ class WebScraper:
                 extracted_links = self.find_all_links(base_url, soup)
 
                 return extracted_links
+            '''
             print("No textual content")
             return list()
         '''
