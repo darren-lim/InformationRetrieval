@@ -21,7 +21,12 @@ class Worker(Thread):
         run_time = 500
         run_start = 500
         run_forever = False
-        spider = WebScraper()
+        stp_words = list()
+        with open('stopwords.txt') as file:
+            for line in file:
+                line = line.strip()
+                stp_words.append(line)
+        spider = WebScraper(stp_words)
         while True:
             tbd_url = self.frontier.get_tbd_url()
             if not tbd_url:

@@ -9,11 +9,13 @@ DOMAINS = ['https://www.ics.uci.edu', 'https://www.cs.uci.edu', 'https://www.inf
 
 class WebScraper:
 
-    def __init__(self):
+    def __init__(self, stop_words):
         self.unique_urls = set()
         self.longest_page = dict()
         self.common_words = dict()
         self.subdomains = dict()
+        self.token_lists = list()
+        self.stop_words = stop_words
         #self.no_content_paths = set()
 
     def scraper(self, url, resp):
@@ -67,9 +69,9 @@ class WebScraper:
         # 512 * 16
         for chunk in resp.raw_response.iter_content(8192):
             content_size += len(chunk)
-        # dont crawl if the content size is greater than 7 mb
+        # dont crawl if the content size is greater than 5 mb
         # average size of a website is 3 - 4 mb* according to google
-        if content_size > 7000000:
+        if content_size > 5000000:
             print("too big")
             return list()
 
@@ -78,10 +80,8 @@ class WebScraper:
         base_url = "{0.scheme}://{0.netloc}/".format(parsedUrl)
         print(url)
 
-        did_visit = self.UniqueURLs(defrag)
-        # checks defragged urls
-        if did_visit:
-            print("did visit")
+        if self.is_in_UniqueURLs(defrag):
+            print("Already Visited")
             return list()
 
         self.write_to_file('visitedURLs.txt', defrag.split())
@@ -90,15 +90,15 @@ class WebScraper:
         content = resp.raw_response.content
         soup = BeautifulSoup(content, 'lxml')
         #print(soup)
-        for script in soup.find_all('script'):
-            script.extract()
+        #for script in soup.find_all('script'):
+        #    script.extract()
         #print(soup)
         # remove comments
         for comments in soup.findAll(text=lambda text: isinstance(text, Comment)):
             comments.extract()
 
-        for hidden in soup.find_all("div",attrs={"style": "display: none;"}):
-            hidden.extract()
+        #for hidden in soup.find_all("div", attrs={"style": "display: none;"}):
+        #    hidden.extract()
         #extracted_links = find_all_links(base_url, soup)
         p_text = self.find_all_text(soup)
         #p_text = soup.find_all(text = True)
@@ -107,12 +107,10 @@ class WebScraper:
         #    print(p.parent)
         p_tokens = self.tokenize(p_text)
         #print(len(p_tokens))
-        print(p_tokens)
+        print(len(p_tokens))
 
         # If low textual content / information, dont get links (considered avoiding low content families)
-        if len(p_tokens) < 60:
-            #extracted_links = self.find_all_links(base_url, soup)
-            #return extracted_links
+        if len(p_tokens) < 120:
             '''
             if parsedUrl.path == '':
                 if '.ics.uci.edu' in base_url:
@@ -145,6 +143,16 @@ class WebScraper:
 
         freq_dict = self.computeWordFrequencies(p_tokens)
         no_stop = self.remove_stop_words(freq_dict)
+        word_keys = no_stop.keys()
+
+        # This could take a WHILE. LIKE A LONG TIME.
+        for t_list in self.token_lists:
+            if self.has_duplicate_tokens(word_keys, t_list):
+                return list()
+        self.token_lists.append(word_keys)
+
+        self.add_to_unique(defrag)
+
         #self.printFreq(no_stop)
 
         # add values to words common words dict
@@ -211,12 +219,14 @@ class WebScraper:
             print("TypeError for ", parsed)
             raise
     '''
-    def UniqueURLs(self, defrag):
+    def is_in_UniqueURLs(self, defrag):
         # check if url is unique
-        if defrag not in self.unique_urls:
-            self.unique_urls.add(defrag)
-            return False
-        return True
+        if defrag in self.unique_urls:
+            return True
+        return False
+
+    def add_to_unique(self, defrag):
+        self.unique_urls.add(defrag)
 
     def write_to_file(self, file_name, url_list):
         with open(file_name, 'a+') as file:
@@ -260,7 +270,7 @@ class WebScraper:
         return [t.strip() for t in visible_texts if t.strip() != '']
 
     def filter_tags(self, element):
-        if element.parent.name in {'style', 'script', '[document]', 'head', 'title', 'meta', 'noscript', 'header', 'html'}:
+        if element.parent.name in {'style', 'script', '[document]', 'head', 'title', 'meta', 'noscript'}:
             return False
         if element.name == 'a':
             return False
@@ -292,13 +302,11 @@ class WebScraper:
 
 
     def remove_stop_words(self, text_dict):
-        final = text_dict
-        with open('stopwords.txt') as file:
-            for line in file:
-                line = line.strip()
-                if line in final:
-                    del final[line]
-        return final
+        no_stop_dict = text_dict
+        for line in self.stop_words:
+            if line in no_stop_dict.keys():
+                del no_stop_dict[line]
+        return no_stop_dict
 
     '''
     computeWordFrequencies has a time complexity dependent on the size of the input. O(N)
@@ -311,6 +319,23 @@ class WebScraper:
             else:
                 wordFreqDict[token] += 1
         return wordFreqDict
+
+
+    def has_duplicate_tokens(self, listA, listB):
+        # setIntersect = {}
+        len_a = len(listA)
+        dup_thresh_a = int(len_a * 0.9)
+        dup_thresh_b = int(len(listB) * 0.9)
+        if (len_a <= len(listB)):
+            setIntersect = frozenset(listA).intersection(listB)
+            if len(setIntersect) >= dup_thresh_a and len(setIntersect) >= dup_thresh_b:
+                return True
+            return False
+        else:
+            setIntersect = frozenset(listB).intersection(listA)
+            if len(setIntersect) >= dup_thresh_a and len(setIntersect) >= dup_thresh_b:
+                return True
+            return False
 
 
     '''
@@ -363,7 +388,7 @@ def is_valid(url):
             print("URL ALREADY SEEDED")
             return False
         '''
-        parsed_path = set(parsed.path.split('/'))
+        parsed_path = parsed.path
         if '/pdf' in parsed_path:
             return False
         if '/xml' in parsed_path:
@@ -376,8 +401,8 @@ def is_valid(url):
             + r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names"
             + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
             + r"|epub|dll|cnf|tgz|sha1"
-            + r"|thmx|mso|arff|rtf|jar|csv"
-            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
+            + r"|thmx|mso|arff|rtf|jar|csv|ics"
+            + r"|rm|smil|wmv|swf|wma|zip|rar|gz|Z)$", parsed.path.lower())
 
     except TypeError:
         print("TypeError for ", parsed)
