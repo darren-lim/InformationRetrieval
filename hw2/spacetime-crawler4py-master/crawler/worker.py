@@ -47,6 +47,7 @@ class Worker(Thread):
                             break
                         else:
                             f.write(str(item[0]) + ' -> ' + str(item[1]) + '\n')
+                            count += 1
                     f.write('\n')
                     f.write('Subdomains in ics.uci.edu: \n')
                     for key, value in spider.get_subdomains().items():

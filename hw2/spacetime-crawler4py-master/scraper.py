@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup, Comment
 import os
 import sys
 
-DOMAINS = ['https://www.ics.uci.edu', 'https://www.cs.uci.edu', 'https://www.informatics.uci.edu', 'https://www.stat.uci.edu', 'https://today.uci.edu/department/information_computer_sciences/']
+DOMAINS = ['ics.uci.edu', 'cs.uci.edu', 'informatics.uci.edu', 'stat.uci.edu']
 
 class WebScraper:
 
@@ -164,10 +164,13 @@ class WebScraper:
 
         # Check longest page length
         list_len = len(no_stop)
-        for key, value in self.longest_page.items():
-            if list_len >= value:
-                self.longest_page.clear()
-                self.longest_page[defrag] = value
+        if len(self.longest_page) == 0:
+            self.longest_page[defrag] = list_len
+        else:
+            for key, value in self.longest_page.items():
+                if list_len >= value:
+                    self.longest_page.clear()
+                    self.longest_page[defrag] = list_len
 
         if '.ics.uci.edu' in base_url:
             self.add_subdomains(parsedUrl.netloc)
@@ -348,7 +351,7 @@ class WebScraper:
             print(str(item[0]) + " -> " + str(item[1]))
 
     def add_subdomains(self, sdomain):
-        if sdomain not in self.subdomains:
+        if sdomain not in self.subdomains.keys():
             self.subdomains[sdomain] = 1
         else:
             self.subdomains[sdomain] += 1
@@ -375,10 +378,9 @@ def is_valid(url):
             return False
 
         for domain in DOMAINS:
-            parseDom = parse.urlparse(domain)
             if 'today.uci.edu' in parsed.netloc and '/department/information_computer_sciences' not in parsed.path:
                 return isInDomain
-            elif parseDom.netloc in parsed.netloc:# or ('today.uci.edu' in parsed.netloc and '/department/information_computer_sciences' in parsed.path):
+            elif domain in parsed.netloc or ('today.uci.edu' in parsed.netloc and '/department/information_computer_sciences' in parsed.path):
                 isInDomain = True
                 break
         if not isInDomain:
