@@ -110,7 +110,7 @@ class WebScraper:
         print(len(p_tokens))
 
         # If low textual content / information, dont get links (considered avoiding low content families)
-        if len(p_tokens) < 120:
+        if len(p_tokens) < 130:
             '''
             if parsedUrl.path == '':
                 if '.ics.uci.edu' in base_url:
@@ -146,14 +146,17 @@ class WebScraper:
         word_keys = no_stop.keys()
 
         # This could take a WHILE. LIKE A LONG TIME.
+        # Even though we crawl duplicate pages, we are not getting the links
+        # from those pages. Not getting links is considered avoiding dup pages
         for t_list in self.token_lists:
             if self.has_duplicate_tokens(word_keys, t_list):
+                print("is duplicate")
                 return list()
         self.token_lists.append(word_keys)
 
-        self.add_to_unique(defrag)
+        # URL Passed all checks
 
-        #self.printFreq(no_stop)
+        self.add_to_unique(defrag)
 
         # add values to words common words dict
         for key, value in no_stop.items():
@@ -163,6 +166,7 @@ class WebScraper:
                 self.common_words[key] = value
 
         # Check longest page length
+        # Length EXCLUDES STOP WORDS.
         list_len = len(no_stop)
         if len(self.longest_page) == 0:
             self.longest_page[defrag] = list_len
@@ -179,49 +183,6 @@ class WebScraper:
 
         return list(extracted_links)
 
-    '''
-    def is_valid(self, url):
-        try:
-            parsed = parse.urlsplit(url, allow_fragments=False)
-            isInDomain = False
-
-            if parsed.scheme not in set(["http", "https"]):
-                return False
-
-            for domain in self.DOMAINS:
-                parseDom = parse.urlparse(domain)
-                if 'today.uci.edu' in parsed.netloc and '/department/information_computer_sciences' not in parsed.path:
-                    return isInDomain
-                elif parseDom.netloc in parsed.netloc:# or ('today.uci.edu' in parsed.netloc and '/department/information_computer_sciences' in parsed.path):
-                    isInDomain = True
-                    break
-            if not isInDomain:
-                return isInDomain
-            
-            #if url in DOMAINS:
-            #    print("URL ALREADY SEEDED")
-            #    return False
-            
-            parsed_path = set(parsed.path.split('/'))
-            if 'pdf' in parsed_path:
-                return False
-            if 'xml' in parsed_path:
-                return False
-
-            return not re.match(
-                r".*\.(css|js|bmp|gif|jpe?g|ico"
-                + r"|png|tiff?|mid|mp2|mp3|mp4"
-                + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
-                + r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names"
-                + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
-                + r"|epub|dll|cnf|tgz|sha1"
-                + r"|thmx|mso|arff|rtf|jar|csv"
-                + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
-
-        except TypeError:
-            print("TypeError for ", parsed)
-            raise
-    '''
     def is_in_UniqueURLs(self, defrag):
         # check if url is unique
         if defrag in self.unique_urls:
@@ -395,16 +356,22 @@ def is_valid(url):
             return False
         if '/xml' in parsed_path:
             return False
+        if 'img' in parsed_path:
+            return False
+        if 'share=' in parsed.query:
+            return False
+        if 'letter=' in parsed.query:
+            return False
 
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
-            + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
+            + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf|Z"
             + r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names"
             + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv|ics"
-            + r"|rm|smil|wmv|swf|wma|zip|rar|gz|Z)$", parsed.path.lower())
+            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
 
     except TypeError:
         print("TypeError for ", parsed)
