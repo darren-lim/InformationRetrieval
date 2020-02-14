@@ -18,9 +18,9 @@ class Worker(Thread):
         super().__init__(daemon=True)
         
     def run(self):
-        run_time = 500
-        run_start = 500
-        run_forever = False
+        #run_time = 500
+        #run_start = 500
+        #run_forever = False
         stp_words = list()
         with open('stopwords.txt') as file:
             for line in file:
@@ -73,30 +73,11 @@ class Worker(Thread):
                 self.frontier.add_url(scraped_url)
             self.frontier.mark_url_complete(tbd_url)
             time.sleep(self.config.time_delay)
+            '''
             if run_start == run_time:
                 while True:
                     if run_start == run_time:
                         next = input("Press a next, e quit, q run 500 times, w run until end ")
-                        with open('ReportText.txt', 'w+') as f:
-                            common_dict = spider.most_common_words()
-                            f.write('Unique Pages Count: ' + str(spider.get_unique_pages_count()) + '\n')
-                            f.write('\n')
-                            f.write('Longest Page: \n')
-                            for key, value in spider.get_longest_page().items():
-                                f.write(str(key) + ' -> ' + str(value) + ' words \n')
-                            f.write('\n')
-                            count = 0
-                            f.write('50 Most Common Words: \n')
-                            for item in common_dict:
-                                if count == 50:
-                                    break
-                                else:
-                                    f.write(str(item[0]) + ' -> ' + str(item[1]) + '\n')
-                                    count += 1
-                            f.write('\n')
-                            f.write('Subdomains in ics.uci.edu: \n')
-                            for key, value in spider.get_subdomains().items():
-                                f.write(str(key) + ' -> ' + str(value) + '\n')
                         if next == 'a':
                             break
                         elif next == 'e':
@@ -111,6 +92,7 @@ class Worker(Thread):
             else:
                 if not run_forever:
                     run_start += 1
+            '''
 
     def parse_robots_txt(self, link_list):
         host, port = self.config.cache_server

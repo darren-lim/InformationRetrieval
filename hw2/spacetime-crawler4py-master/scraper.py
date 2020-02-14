@@ -107,7 +107,7 @@ class WebScraper:
         #    print(p.parent)
         p_tokens = self.tokenize(p_text)
         #print(len(p_tokens))
-        print(len(p_tokens))
+        #print(len(p_tokens))
 
         # If low textual content / information, dont get links (considered avoiding low content families)
         if len(p_tokens) < 130:
@@ -144,6 +144,7 @@ class WebScraper:
         freq_dict = self.computeWordFrequencies(p_tokens)
         no_stop = self.remove_stop_words(freq_dict)
         word_keys = no_stop.keys()
+
 
         # This could take a WHILE. LIKE A LONG TIME.
         # Even though we crawl duplicate pages, we are not getting the links
