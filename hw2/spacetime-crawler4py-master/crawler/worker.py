@@ -18,9 +18,6 @@ class Worker(Thread):
         super().__init__(daemon=True)
         
     def run(self):
-        #run_time = 500
-        #run_start = 500
-        #run_forever = False
         stp_words = list()
         with open('stopwords.txt') as file:
             for line in file:
@@ -31,7 +28,6 @@ class Worker(Thread):
             tbd_url = self.frontier.get_tbd_url()
             if not tbd_url:
                 self.logger.info("Frontier is empty. Stopping Crawler.")
-                #'''''
                 with open('ReportText.txt', 'w+') as f:
                     common_dict = spider.most_common_words()
                     f.write('Unique Pages Count: ' + str(spider.get_unique_pages_count()) + '\n')
@@ -52,7 +48,6 @@ class Worker(Thread):
                     f.write('Subdomains in ics.uci.edu: \n')
                     for key, value in spider.get_subdomains().items():
                         f.write(str(key) + ' -> ' + str(value) + '\n')
-                #'''
                 break
             if self.frontier.check_url_completed(tbd_url):
                 print("URL Already marked complete")
@@ -73,27 +68,10 @@ class Worker(Thread):
                 self.frontier.add_url(scraped_url)
             self.frontier.mark_url_complete(tbd_url)
             time.sleep(self.config.time_delay)
-            '''
-            if run_start == run_time:
-                while True:
-                    if run_start == run_time:
-                        next = input("Press a next, e quit, q run 500 times, w run until end ")
-                        if next == 'a':
-                            break
-                        elif next == 'e':
-                            sys.exit()
-                        elif next == 'q':
-                            run_start = 0
-                            break
-                        elif next == 'w':
-                            run_start = 501
-                            run_forever = True
-                            break
-            else:
-                if not run_forever:
-                    run_start += 1
-            '''
 
+    '''
+    Gets robots.txt from cache server and checks if url able to be parsed.
+    '''
     def parse_robots_txt(self, link_list):
         host, port = self.config.cache_server
         robotsURL = ''

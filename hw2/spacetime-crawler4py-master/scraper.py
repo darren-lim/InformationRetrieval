@@ -16,31 +16,24 @@ class WebScraper:
         self.subdomains = dict()
         self.token_lists = list()
         self.stop_words = stop_words
-        #self.no_content_paths = set()
 
+    '''
+    scraper is O(N log N), because list sorting is O(N log N)
+    '''
     def scraper(self, url, resp):
         links = self.extract_next_links(url, resp)
-        validLinks = sorted([link for link in links if is_valid(link)], reverse=True)
-        '''
-        while True:
-            next = input("Press a next, e quit ")
-            if next == 'a':
-                break
-            elif next == 'e':
-                sys.exit()
-        print("next")
-        '''
-        return validLinks
+        return sorted([link for link in links if is_valid(link)], reverse=True)
 
+
+    '''
+    the time complexity for extract_next_links is hard to gauge because there are
+    lots of for loops looping through lists and sets and dictionaries.
+    The worst time would be  O(N), because there really isn't any place where
+    O(N) functions are called over again.
+    '''
     def extract_next_links(self, url, resp):
-        # Implementation requred.
-        # add robots.txt
-        # check if valid page
-        # defrag links
-        #r = requests.get(url, timeout=10)
-        #if not r:
-        #    return list()
         # check if url responds
+        # Only checking for 200 status
         if resp.status == 200:
             print("SUCCESS")
         elif 200 < resp.status < 300: # and resp.status < 300:
@@ -65,16 +58,19 @@ class WebScraper:
         if not resp.raw_response.ok:
             print("resp is not ok ):")
             return list()
+
         content_size = 0
         # 512 * 16
         for chunk in resp.raw_response.iter_content(8192):
             content_size += len(chunk)
+
         # dont crawl if the content size is greater than 5 mb
         # average size of a website is 3 - 4 mb* according to google
         if content_size > 5000000:
             print("too big")
             return list()
 
+        # Defrag urls and separate them
         defrag = parse.urldefrag(url)[0]
         parsedUrl = parse.urlsplit(url, allow_fragments=False)
         base_url = "{0.scheme}://{0.netloc}/".format(parsedUrl)
@@ -84,67 +80,27 @@ class WebScraper:
             print("Already Visited")
             return list()
 
-        self.write_to_file('visitedURLs.txt', defrag.split())
         if 'https://today.uci.edu/department/information_computer_sciences/calendar' in defrag:
             return list()
+
         content = resp.raw_response.content
         soup = BeautifulSoup(content, 'lxml')
-        #print(soup)
-        #for script in soup.find_all('script'):
-        #    script.extract()
-        #print(soup)
+
         # remove comments
         for comments in soup.findAll(text=lambda text: isinstance(text, Comment)):
             comments.extract()
 
-        #for hidden in soup.find_all("div", attrs={"style": "display: none;"}):
-        #    hidden.extract()
-        #extracted_links = find_all_links(base_url, soup)
         p_text = self.find_all_text(soup)
-        #p_text = soup.find_all(text = True)
-        #print(p_text)
-        #for p in p_text:
-        #    print(p.parent)
         p_tokens = self.tokenize(p_text)
-        #print(len(p_tokens))
-        #print(len(p_tokens))
 
         # If low textual content / information, dont get links (considered avoiding low content families)
         if len(p_tokens) < 130:
-            '''
-            if parsedUrl.path == '':
-                if '.ics.uci.edu' in base_url:
-                    self.add_subdomains(parsedUrl.netloc)
-
-                extracted_links = self.find_all_links(base_url, soup)
-
-                return extracted_links
-            '''
             print("No textual content")
             return list()
-        '''
-            if defrag in self.no_content_paths:
-                return list()
-            else:
-                for path in self.no_content_paths:
-                    if path in parsedUrl.path:
-                        return list()
-                self.no_content_paths.add(defrag)
-                links = self.find_all_links(base_url, soup)
-                for link in links:
-                    link_path = parse.urlsplit(url, allow_fragments=False).path
-                    if link_path in link:
-                        return list()
-                return self.find_all_links(base_url, soup)
-            '''
-        # check if the page has low information
-        # if low information, get each subsequent link within that path
-        # ignore those paths ?? ???????
 
         freq_dict = self.computeWordFrequencies(p_tokens)
         no_stop = self.remove_stop_words(freq_dict)
         word_keys = no_stop.keys()
-
 
         # This could take a WHILE. LIKE A LONG TIME.
         # Even though we crawl duplicate pages, we are not getting the links
@@ -156,7 +112,7 @@ class WebScraper:
         self.token_lists.append(word_keys)
 
         # URL Passed all checks
-
+        # Add url to unique list
         self.add_to_unique(defrag)
 
         # add values to words common words dict
@@ -184,29 +140,24 @@ class WebScraper:
 
         return list(extracted_links)
 
+    '''
+    is_in_UniqueURLs has a time complexity of O(1) because the set operation in is O(1).
+    '''
     def is_in_UniqueURLs(self, defrag):
         # check if url is unique
         if defrag in self.unique_urls:
             return True
         return False
 
+    '''
+    add_to_unique has a time complexity of O(1) because adding is O(1).
+    '''
     def add_to_unique(self, defrag):
         self.unique_urls.add(defrag)
 
-    def write_to_file(self, file_name, url_list):
-        with open(file_name, 'a+') as file:
-            for url in url_list:
-                file.write(url + "\n")
-
-
-    def file_to_set(self, file_name):
-        file_set = set()
-        with open(file_name, 'a+') as file:
-            for line in file:
-                file_set.add(line)
-        return file_set
-
-
+    '''
+    find_all_links has time complexity of O(N) because we are going through and finding links in the html.
+    '''
     def find_all_links(self, base_url, soup):
         links = set()
         for link in soup.find_all('a', href=True):
@@ -219,38 +170,24 @@ class WebScraper:
         return links
 
     '''
-    def find_all_text(soup):
-        for script in soup(['script', 'style']):
-            script.decompose()
-        tag_list = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a']
-        text_list = [text for text in soup.find_all(text=True) if text.parent.name in tag_list]
-        print(soup.get_text)
-        return text_list
+    find_all_text has a time complexity of O(N) because we are going through all the text.
     '''
-
     # https://stackoverflow.com/questions/1936466/beautifulsoup-grab-visible-webpage-text?noredirect=1&lq=1
     def find_all_text(self, soup):
         texts = soup.findAll(text=True)
         visible_texts = filter(self.filter_tags, texts)
         return [t.strip() for t in visible_texts if t.strip() != '']
 
+    '''
+    Time complexity of filter_tags is O(1) because in evaluation in set only takes O(1) time.
+    '''
+    # https://stackoverflow.com/questions/1936466/beautifulsoup-grab-visible-webpage-text?noredirect=1&lq=1
     def filter_tags(self, element):
         if element.parent.name in {'style', 'script', '[document]', 'head', 'title', 'meta', 'noscript'}:
             return False
         if element.name == 'a':
             return False
         return True
-
-
-    def find_text(self, soup):
-        [s.extract() for s in soup(['style', 'script', '[document]', 'head', 'title'])]
-        return soup.get_text()
-
-
-    def find_paragraph_words(self, soup):
-        tag_list = {'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'td'}
-        return [t.strip() for t in soup.find_all(text=True) if t.parent.name in tag_list]
-
 
     '''
     Tokenize has a time complexity dependent on the size of the text file. O(N)
@@ -265,7 +202,10 @@ class WebScraper:
             print("No valid tokens in the list")
         return tokenList
 
-
+    '''
+    remove_stop_words has a time complexity dependent on the size 
+    of the dictionary keys list and stop words list. O(N)
+    '''
     def remove_stop_words(self, text_dict):
         no_stop_dict = text_dict
         for line in self.stop_words:
@@ -285,7 +225,9 @@ class WebScraper:
                 wordFreqDict[token] += 1
         return wordFreqDict
 
-
+    '''
+    has_duplicate_tokens has a time complexity of O(1) because frozenset operations are typically O(1)
+    '''
     def has_duplicate_tokens(self, listA, listB):
         # setIntersect = {}
         len_a = len(listA)
@@ -304,33 +246,41 @@ class WebScraper:
 
 
     '''
-    printFreq has a time complexity dependent on the size of the input.
-    The function sorts the frequency dictionary, thus the complexity is O(n log n)
+    add_subdomains has a time complexity of O(1) because adding to a dict is O(1)
     '''
-    def printFreq(self, Frequencies):
-        sortedFreq = sorted(Frequencies.items(), key = lambda val: val[1], reverse=True)
-        for item in sortedFreq:
-            print(str(item[0]) + " -> " + str(item[1]))
-
     def add_subdomains(self, sdomain):
         if sdomain not in self.subdomains.keys():
             self.subdomains[sdomain] = 1
         else:
             self.subdomains[sdomain] += 1
 
+    '''
+    get_subdomains is O(N log N), because sorting a dictionary has O(N log N) time.
+    '''
     def most_common_words(self):
         return sorted(self.common_words.items(), key=lambda val: val[1], reverse=True)
 
+    '''
+    get_unique_pages_count is O(1), returning length of stored value
+    '''
     def get_unique_pages_count(self):
         return len(self.unique_urls)
 
+    '''
+    get_longest_page is O(1), returning stored value
+    '''
     def get_longest_page(self):
         return self.longest_page
 
+    '''
+    get_subdomains is O(1), returning stored value
+    '''
     def get_subdomains(self):
         return self.subdomains
 
-
+'''
+Time of is_valid is O(N) based on the size of DOMAINS which is 4
+'''
 def is_valid(url):
     try:
         parsed = parse.urlsplit(url, allow_fragments=False)
@@ -347,11 +297,7 @@ def is_valid(url):
                 break
         if not isInDomain:
             return isInDomain
-        '''
-        if url in DOMAINS:
-            print("URL ALREADY SEEDED")
-            return False
-        '''
+
         parsed_path = parsed.path
         if '/pdf' in parsed_path:
             return False
